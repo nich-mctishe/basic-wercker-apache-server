@@ -1,0 +1,49 @@
+box:
+  id: php
+  tag: 5.6-apache
+  ports:
+    - '80'
+    - '3000'
+    - '3001'
+
+dev:
+  steps:
+    - script:
+      name: copy resources
+      code: |
+        echo "copying"
+    - script:
+      name: adding tools
+      code: |
+        ln -s "$WERCKER_ROOT/tools/log" /usr/bin/log
+        ln -s "$WERCKER_ROOT/tools/reload" /usr/bin/reload
+        ln -s "$WERCKER_ROOT/tools/reload" /usr/bin/restart
+    - script:
+        name: install php, node, npm and mysql-client
+        code: |
+          apt-get update
+          apt-get -fy install vim nano libmcrypt-dev
+          docker-php-ext-install pdo mcrypt
+          # cp /usr/share/php5/php.ini-production /usr/local/etc/php/php.ini
+    #Ensure dev has www-data permissions
+    - script:
+        name: change permissions
+        code: |
+          chown -R www-data:www-data $WERCKER_ROOT
+    #Add a symlink from auto built pipeline/source to var/www/html
+    - script:
+        name: link to www folder
+        code: |
+          rm -rf /var/www/html
+          ln -s $WERCKER_ROOT /var/www/html
+    - script:
+        name: start apache
+        code: |
+          a2enmod rewrite
+          apache2-foreground 2>> /var/log/apache2/error.log 1>> /var/log/apache2/access.log &
+        cwd: $WERCKER_ROOT/
+    - internal/shell:
+        code: |
+          stty columns $TERMINAL_COLUMNS
+          stty rows $TERMINAL_ROWS
+          log
